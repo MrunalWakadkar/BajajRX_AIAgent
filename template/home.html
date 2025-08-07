@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSolution | Intelligent Healthcare Policy System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        body {
+            background: #f9f9f9;
+            font-family: 'Poppins', sans-serif;
+        }
+        .header {
+            background: linear-gradient(90deg, #0072ff, #00c6ff);
+            color: #fff;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header img {
+            height: 50px;
+            margin-right: 10px;
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        .container-box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        .progress {
+            height: 25px;
+        }
+        .footer {
+            background: #003b73;
+            color: #fff;
+            text-align: center;
+            padding: 15px;
+            font-size: 0.9rem;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background: #0072ff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #0056cc;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-title">
+        <!-- <img src="https://img.icons8.com/fluency/96/health-checkup.png" alt="Logo"> -->
+        CodeSolution Healthcare AI
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+    <div class="container-box">
+        <h3 class="text-center mb-4">🏥 Intelligent Healthcare Policy Decisioning</h3>
+        <p class="text-center text-muted mb-4">
+            Upload your healthcare policy documents and ask complex queries to get AI-powered decisions.  
+            
+        </p>
+
+        <!-- Upload -->
+        <form id="uploadForm" action="/upload-document/" method="post" enctype="multipart/form-data" class="mb-4">
+            {% csrf_token %}
+            <div class="input-group">
+                <input type="file" name="document" class="form-control" required>
+                <button type="submit" class="btn btn-primary">📂 Upload Policy</button>
+            </div>
+        </form>
+        <div id="uploadResult"></div>
+
+        <!-- Progress Bar -->
+        <div class="progress mb-3" style="display:none;" id="progressBarContainer">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" 
+                id="progressBar" style="width: 0%">0%</div>
+        </div>
+
+        <!-- Existing Documents Dropdown -->
+<div class="mb-4">
+    <label class="fw-bold">📂 Select Existing Document</label>
+    <div class="input-group">
+        <select id="existingDocDropdown" class="form-select">
+            <option value="">-- Select a Document --</option>
+            {% for doc in latest_docs %}
+                <option value="{{ doc.id }}">{{ doc.name }} ({{ doc.upload_date|date:"d M Y, H:i" }})</option>
+            {% empty %}
+                <option disabled>No previously uploaded documents</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-success" onclick="useSelectedDocument()">Use</button>
+        <button class="btn btn-danger" onclick="deleteSelectedDocument()">Delete</button>
+    </div>
+</div>
+
+        <!-- Query -->
+        <div class="input-group mt-4">
+            <input type="text" id="query" class="form-control" placeholder="🔍 Ask questions (e.g. What is the waiting period for knee surgery?)" required>
+            <button class="btn btn-success" onclick="processQuery()">Submit</button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="text-center mb-3" style="display:none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Analyzing policy and generating decision...</p>
+        </div>
+
+        <!-- Output -->
+        <div id="resultCard" class="mt-4"></div>
+
+        <!-- Clarifying Questions -->
+        <div id="followupSection" class="mt-3" style="display: none;">
+            <h5>❓ Clarifying Questions</h5>
+            <p id="followupQuestion" class="fw-bold"></p>
+            <input type="text" id="followupAnswer" class="form-control mb-2" placeholder="Type your answer here">
+            <button class="btn btn-info" onclick="submitFollowup()">Submit Answer</button>
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+ <footer class="footer">
+     © {{ year }} CodeSolution Healthcare AI. All rights reserved.
+ </footer>
+<!-- <div class="footer">
+    © {{ year }} CodeSolution Healthcare AI. All rights reserved.
+</div> -->
+
+<script>
+    // Upload with Progress
+    const uploadForm = document.getElementById('uploadForm');
+    uploadForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(uploadForm);
+        const progressContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.innerText = '0%';
+
+        fetch('/upload-document/', {method: 'POST', body: formData})
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('uploadResult').innerHTML =
+                        `<div class="alert alert-warning">⚠️ ${data.error}</div>`;
+                    return;
+                }
+                const taskId = data.task_id;
+                updateUploadHistory(data.latest_docs);
+
+                const interval = setInterval(() => {
+                    fetch(`/get-progress/${taskId}/`)
+                        .then(res => res.json())
+                        .then(p => {
+                            progressBar.style.width = `${p.progress}%`;
+                            progressBar.innerText = `${p.progress}%`;
+                            if (p.progress >= 100) {
+                                clearInterval(interval);
+                                document.getElementById('uploadResult').innerHTML =
+                                    `<div class="alert alert-success">✅ Policy Uploaded & Processed Successfully!</div>`;
+                            }
+                        });
+                }, 1000);
+            })
+            .catch(() => {
+                document.getElementById('uploadResult').innerHTML =
+                    `<div class="alert alert-danger">❌ Error uploading file</div>`;
+            });
+    });
+
+    // Update Cards
+    function updateUploadHistory(latestDocs) {
+        const container = document.getElementById('documentCards');
+        container.innerHTML = '';
+        if (latestDocs.length === 0) {
+            container.innerHTML = '<p class="text-muted">No documents uploaded yet.</p>';
+            return;
+        }
+        latestDocs.forEach(doc => {
+            container.innerHTML += `
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+                            <a href="${doc.file_path}" target="_blank">
+                                <i class="fas fa-file-pdf text-danger fa-3x mb-2"></i>
+                            </a>
+                            <h6 class="card-title text-truncate">${doc.name}</h6>
+                            <p class="text-muted small">${doc.upload_date}</p>
+                            <div class="d-flex justify-content-around">
+                                <button class="btn btn-sm btn-success" onclick="useDocument('${doc.id}')">
+                                    <i class="fas fa-check"></i> Use
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteDocument('${doc.id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function useSelectedDocument() {
+    const selectedId = document.getElementById('existingDocDropdown').value;
+    if (!selectedId) {
+        alert("⚠️ Please select a document!");
+        return;
+    }
+
+    fetch(`/use-existing-document/${selectedId}/`)
+        .then(res => res.json())
+        .then(data => {
+            alert(`✅ Using document`);
+        })
+        .catch(() => alert("❌ Failed to use document."));
+}
+
+function deleteSelectedDocument() {
+    const dropdown = document.getElementById('existingDocDropdown');
+    const selectedId = dropdown.value;
+
+    if (!selectedId) {
+        alert("⚠️ Please select a document to delete!");
+        return;
+    }
+
+    if (confirm("Are you sure you want to delete this document?")) {
+        fetch(`/delete-document/${selectedId}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+
+                // Remove from dropdown list
+                dropdown.querySelector(`option[value="${selectedId}"]`).remove();
+
+                // Reset dropdown if empty
+                if (dropdown.options.length === 1) {
+                    dropdown.innerHTML = '<option value="">-- No documents available --</option>';
+                }
+
+            } else {
+                alert("❌ Error deleting document");
+            }
+        })
+        .catch(() => alert("❌ Failed to delete document"));
+    }
+}
+
+    // Before submitting upload form
+uploadForm.addEventListener('submit', function(event) {
+    const fileInput = uploadForm.querySelector('input[type="file"]');
+    const existingNames = Array.from(document.querySelectorAll('#existingDocDropdown option'))
+                               .map(opt => opt.textContent.split(' (')[0]);
+
+    if (fileInput.files.length && existingNames.includes(fileInput.files[0].name)) {
+        event.preventDefault();
+        alert(`⚠️ ${fileInput.files[0].name} already exists. Please use the dropdown.`);
+        return;
+    }
+});
+
+
+    // Query handler
+    function processQuery() {
+        const query = document.getElementById('query').value;
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('resultCard').innerHTML = '';
+
+        fetch('/process-query/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify({query})
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            renderResult(data);
+        })
+        .catch(() => {
+            document.getElementById('loading').style.display = 'none';
+            renderError();
+        });
+    }
+
+    function renderResult(data) {
+        let badgeClass = 'bg-warning';
+        if (data.decision === 'Approved') badgeClass = 'bg-success';
+        if (data.decision === 'Rejected') badgeClass = 'bg-danger';
+
+        const clauses = data.referenced_clauses?.length 
+            ? `<ul>${data.referenced_clauses.map(c => `<li>${c}</li>`).join('')}</ul>` 
+            : 'None';
+
+        document.getElementById('resultCard').innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5>Decision: <span class="badge ${badgeClass}">${data.decision}</span></h5>
+                    <p><strong>💰 Amount:</strong> ${data.amount !== null ? data.amount : 'N/A'}</p>
+                    <p><strong>📝 Justification:</strong> ${data.justification}</p>
+                    <div><strong>📄 Referenced Clauses:</strong> ${clauses}</div>
+                </div>
+            </div>
+        `;
+
+        if (data.decision === "Needs Review") {
+            document.getElementById('followupSection').style.display = 'block';
+            document.getElementById('followupQuestion').innerText = "Can you provide more details?";
+        } else {
+            document.getElementById('followupSection').style.display = 'none';
+        }
+    }
+
+    function renderError() {
+        document.getElementById('resultCard').innerHTML = `
+            <div class="alert alert-danger">❌ Error processing your query.</div>`;
+    }
+
+    function submitFollowup() {
+        const followupAnswer = document.getElementById('followupAnswer').value;
+        const query = document.getElementById('query').value + " " + followupAnswer;
+        processQuery(query);
+        document.getElementById('followupSection').style.display = 'none';
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
