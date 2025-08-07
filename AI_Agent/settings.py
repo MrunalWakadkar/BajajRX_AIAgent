@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+
+ALLOWED_HOSTS = ['AI_System.onrender.com']
+DEBUG = False
+
 from decouple import config
 GEMINI_API_KEY = config('GEMINI_API_KEY')
 
