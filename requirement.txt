@@ -11,3 +11,4 @@ numpy
 django-widget-tweaks
 python-dotenv
 whitenoise
+python-decouple
