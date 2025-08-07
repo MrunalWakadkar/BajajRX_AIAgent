@@ -1,0 +1,13 @@
+Django>=5.2.4
+gunicorn
+google-generativeai>=0.5.4
+sentence-transformers>=2.5.1
+faiss-cpu>=1.7.4
+requests
+reportlab
+PyMuPDF>=1.23.7
+pandas
+numpy
+django-widget-tweaks
+python-dotenv
+whitenoise
