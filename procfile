@@ -1,1 +1,1 @@
-web: gunicorn AI_Agent.wsgi
+web: gunicorn AI_Agent.wsgi:application --timeout 300 --workers 1

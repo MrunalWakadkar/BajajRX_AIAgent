@@ -32,11 +32,7 @@ SECRET_KEY = 'django-insecure-*pu7yh%-2f8+vv%x$-76%+@%#oh=@c2p1bd&rxx&qzp^@=y@vo
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = [
-    "bajajrx-aiagent-4.onrender.com",
-    "localhost",
-    "127.0.0.1"
-]
+ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [

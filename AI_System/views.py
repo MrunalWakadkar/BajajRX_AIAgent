@@ -2,7 +2,7 @@ import json
 import uuid
 import os
 from threading import Thread
-
+from .ai_model import model
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.core.cache import cache
@@ -254,15 +254,13 @@ def process_query(request):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
-def get_model():
-    from sentence_transformers import SentenceTransformer
-    global _model
-    if '_model' not in globals():
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
+def generate_embeddings(request):
+    text = request.GET.get('text', 'Hello World')
+    
+    # Encode without reloading model
+    embeddings = model.encode([text]).tolist()
 
-def my_view(request):
-    model = get_model()
-    result = model.encode(["Test"])
-    return JsonResponse({"vector": result.tolist()})
-
+    return JsonResponse({
+        "text": text,
+        "embeddings": embeddings
+    })

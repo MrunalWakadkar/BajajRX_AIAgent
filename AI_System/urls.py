@@ -9,4 +9,5 @@ urlpatterns = [
     path('get-progress/<uuid:task_id>/', views.get_progress, name='get_progress'),
     path('process-query/', views.process_query, name='process_query'),
     path("delete-document/<int:doc_id>/", views.delete_document, name="delete_document"),
+    path('embed/', views.generate_embeddings, name='generate_embeddings'),
 ]
