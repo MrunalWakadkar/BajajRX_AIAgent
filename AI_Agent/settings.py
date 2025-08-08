@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 
 
-ALLOWED_HOSTS = ['AI_System.onrender.com']
+# ALLOWED_HOSTS = ['AI_System.onrender.com']
 DEBUG = False
 
 from decouple import config
@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure-*pu7yh%-2f8+vv%x$-76%+@%#oh=@c2p1bd&rxx&qzp^@=y@vo
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["bajajrx-aiagent-4.onrender.com",]
 
 
 # Application definition
