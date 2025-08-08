@@ -253,3 +253,16 @@ def process_query(request):
             }, status=500)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
+
+def get_model():
+    from sentence_transformers import SentenceTransformer
+    global _model
+    if '_model' not in globals():
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model
+
+def my_view(request):
+    model = get_model()
+    result = model.encode(["Test"])
+    return JsonResponse({"vector": result.tolist()})
+
